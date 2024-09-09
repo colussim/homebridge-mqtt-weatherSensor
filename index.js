@@ -11,10 +11,17 @@ class MQTTWeatherSensor {
   constructor(log, config) {
     this.log = log;
     this.name = config.name;
-    this.topic = config.topic || 'esp32_station';
-    this.client = mqtt.connect(`mqtt://${config.host}:${config.port}`, {
-      username: config.username,
-      password: config.password,
+    this.host = config.host;
+    this.port = config.port;
+    this.username = config.username;
+    this.password = config.password;
+    this.topic = config.topic;
+    this.debug = config.debug || false;
+    this.globalValues = config.globalValues || {};
+
+    this.client = mqtt.connect(`mqtt://${this.host}:${this.port}`, {
+      username: this.username,
+      password: this.password,
     });
 
     this.temperature = 0;
@@ -23,9 +30,9 @@ class MQTTWeatherSensor {
     this.batteryLevel = 0;
 
     this.informationService = new Service.AccessoryInformation()
-      .setCharacteristic(Characteristic.Manufacturer, "Your Manufacturer")
-      .setCharacteristic(Characteristic.Model, "Model A")
-      .setCharacteristic(Characteristic.SerialNumber, "123456789");
+      .setCharacteristic(Characteristic.Manufacturer, this.globalValues.manufacturer || "Default Manufacturer")
+      .setCharacteristic(Characteristic.Model, this.globalValues.model || "Default Model")
+      .setCharacteristic(Characteristic.SerialNumber, this.globalValues.serialNumber || "0000000000");
 
     this.temperatureService = new Service.TemperatureSensor(this.name);
     this.humidityService = new Service.HumiditySensor(this.name);
