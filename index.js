@@ -1,81 +1,100 @@
 const mqtt = require('mqtt');
-const { Service, Characteristic } = require('homebridge');
-
-let Accessory; // Initialize variable for Homebridge Accessory
+let Service, Characteristic;
 
 module.exports = (homebridge) => {
-  Accessory = homebridge.hap.Accessory;
-  homebridge.registerAccessory('homebridge-mqtt-weather-sensor', 'MqttWeatherSensor', MqttWeatherSensor);
+  Service = homebridge.hap.Service;
+  Characteristic = homebridge.hap.Characteristic;
+  homebridge.registerAccessory("homebridge-mqtt-weather-sensor", "MQTTWeatherSensor", MQTTWeatherSensor);
 };
 
-class MqttWeatherSensor {
+class MQTTWeatherSensor {
   constructor(log, config) {
     this.log = log;
-    this.config = config;
-    this.topic = this.config.topic;
-    
-    // Create MQTT connection URL
-    const mqttUrl = `mqtt://${this.config.username}:${this.config.password}@${this.config.host}:${this.config.port}`;
-    
-    // Connect to the MQTT server
-    this.client = mqtt.connect(mqttUrl);
-    
+    this.name = config.name;
+    this.topic = config.topic || 'esp32_station';
+    this.client = mqtt.connect(`mqtt://${config.host}:${config.port}`, {
+      username: config.username,
+      password: config.password,
+    });
+
+    this.temperature = 0;
+    this.humidity = 0;
+    this.pressure = 0;
+    this.batteryLevel = 0;
+
+    this.informationService = new Service.AccessoryInformation()
+      .setCharacteristic(Characteristic.Manufacturer, "Your Manufacturer")
+      .setCharacteristic(Characteristic.Model, "Model A")
+      .setCharacteristic(Characteristic.SerialNumber, "123456789");
+
+    this.temperatureService = new Service.TemperatureSensor(this.name);
+    this.humidityService = new Service.HumiditySensor(this.name);
+    this.batteryService = new Service.BatteryService(this.name);
+
+    this.temperatureService.getCharacteristic(Characteristic.CurrentTemperature)
+      .on('get', this.getTemperature.bind(this));
+
+    this.humidityService.getCharacteristic(Characteristic.CurrentRelativeHumidity)
+      .on('get', this.getHumidity.bind(this));
+      
+    this.batteryService.getCharacteristic(Characteristic.BatteryLevel)
+      .on('get', this.getBatteryLevel.bind(this));
+
     this.client.on('connect', () => {
+      this.log.info('Connected to MQTT server');
       this.client.subscribe(this.topic, (err) => {
-        if (!err) {
-          this.log(`Subscribed to MQTT topic: ${this.topic}`);
+        if (err) {
+          this.log.error('Failed to subscribe:', err);
         } else {
-          this.log.error('Failed to subscribe to topic:', err);
+          this.log.info(`Subscribed to topic: ${this.topic}`);
         }
       });
     });
 
-    this.client.on('message', (topic, message) => {
-      const data = JSON.parse(message.toString());
-      this.updateValues(data);
-    });
-
-    // Create a new accessory for the weather sensor
-    this.weatherSensor = new Accessory('MQTT Weather Sensor', Accessory.UUIDGen.generate('mqtt-weather-sensor'));
-    
-    // Setup service
-    const service = this.weatherSensor.addService(Service.TemperatureSensor, 'Temperature Sensor');
-    service.getCharacteristic(Characteristic.CurrentTemperature)
-      .onGet(() => this.currentTemperature);
-
-    this.humidityService = this.weatherSensor.addService(Service.HumiditySensor, 'Humidity Sensor');
-    this.humidityService.getCharacteristic(Characteristic.CurrentRelativeHumidity)
-      .onGet(() => this.currentHumidity);
-
-    this.pressureService = this.weatherSensor.addService(Service.AirPressureSensor, 'Pressure Sensor');
-    this.pressureService.getCharacteristic(Characteristic.CurrentPressure)
-      .onGet(() => this.currentPressure);
-    
-    this.batteryService = this.weatherSensor.addService(Service.Battery, 'Battery Level');
-    this.batteryService.getCharacteristic(Characteristic.BatteryLevel)
-      .onGet(() => this.batteryLevel);
-      
-    this.weatherSensor.on('identify', (paired, callback) => {
-      this.log('Identify requested!');
-      callback();
-    });
+    this.client.on('message', this.handleMessage.bind(this));
   }
 
-  updateValues(data) {
-    this.currentTemperature = data.temperature;
-    this.currentHumidity = data.humidity;
-    this.currentPressure = data.pressure;
-    this.batteryLevel = data.battery_level;
+  handleMessage(topic, message) {
+    this.log.info(`Message received on ${topic}: ${message.toString()}`);
+    try {
+      const data = JSON.parse(message.toString());
+      this.log.debug(`Parsed data: ${JSON.stringify(data)}`);
 
-    this.weatherSensor.getService(Service.TemperatureSensor).setCharacteristic(Characteristic.CurrentTemperature, this.currentTemperature);
-    this.humidityService.setCharacteristic(Characteristic.CurrentRelativeHumidity, this.currentHumidity);
-    this.pressureService.setCharacteristic(Characteristic.CurrentPressure, this.currentPressure);
-    this.batteryService.setCharacteristic(Characteristic.BatteryLevel, this.batteryLevel);
-    
-    this.log(`Updated values: Temp=${this.currentTemperature}, Humidity=${this.currentHumidity}, Pressure=${this.currentPressure}, Battery=${this.batteryLevel}`);
+      this.temperature = data.temperature;
+      this.humidity = data.humidity;
+      this.pressure = data.pressure;
+      this.batteryLevel = data.battery_level;
+
+      this.temperatureService
+        .getCharacteristic(Characteristic.CurrentTemperature)
+        .updateValue(this.temperature);
+
+      this.humidityService
+        .getCharacteristic(Characteristic.CurrentRelativeHumidity)
+        .updateValue(this.humidity);
+
+      this.batteryService
+        .getCharacteristic(Characteristic.BatteryLevel)
+        .updateValue(this.batteryLevel);
+
+    } catch (error) {
+      this.log.error('Error parsing message:', error);
+    }
+  }
+
+  getTemperature(callback) {
+    callback(null, this.temperature);
+  }
+
+  getHumidity(callback) {
+    callback(null, this.humidity);
+  }
+
+  getBatteryLevel(callback) {
+    callback(null, this.batteryLevel);
   }
 
   getServices() {
-    return [this.weatherSensor, this.humidityService, this.pressureService, this.batteryService];
+    return [this.informationService, this.temperatureService, this.humidityService, this.batteryService];
   }
 }

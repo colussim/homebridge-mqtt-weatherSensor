@@ -1,7 +1,7 @@
 {
   "platforms": [
     {
-      "platform": "MqttWeatherSensor",
+      "platform": "MMQTTWeatherSensor",
       "host": "YOUR_MQTT_SERVER",          // The name or IP address of your MQTT server
       "port": 1883,                         // The port of your MQTT server (default is 1883)
       "username": "YOUR_USERNAME",          // Username for connecting to the MQTT server
