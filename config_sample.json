@@ -1,13 +1,16 @@
 {
-  "platforms": [
-    {
-      "platform": "MMQTTWeatherSensor",
-      "host": "YOUR_MQTT_SERVER",          // The name or IP address of your MQTT server
-      "port": 1883,                         // The port of your MQTT server (default is 1883)
-      "username": "YOUR_USERNAME",          // Username for connecting to the MQTT server
-      "password": "YOUR_PASSWORD",          // Password for connecting to the MQTT server
-      "topic": "esp32_station"              // Topic subscribed to receive sensor data
-    }
-  ]
-}
 
+  "accessory": "MQTTWeatherSensor",
+  "name": "Mqtt Weather Sensor",
+  "host": "localhost",
+  "port": 1883,
+  "username": "YOUR_USERNAME",
+  "password": "YOUR_PASSWORD",
+  "topic": "esp32_station",
+  "debug": true,
+  "globalValues": {
+     "manufacturer": "ESP32_Station",
+      "serialNumber": "1234567890",
+       "model": "Sensor"
+    }
+}
