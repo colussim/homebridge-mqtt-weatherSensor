@@ -1,0 +1,28 @@
+{
+  "name": "homebridge-mqtt-weather-sensor",
+  "version": "1.0.0",
+  "description": "Homebridge plugin for MQTT weather sensor",
+  "main": "index.js",
+  "keywords": [
+    "homebridge-plugin",
+    "mqtt",
+    "weather"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "colussim ",
+  "license": "ISC",
+  "dependencies": {
+    "mqtt": "^4.2.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/colussim/homebridge-mqtt-weatherSensor"
+  },
+  "engines": {
+    "homebridge": ">=1.3.4",
+    "node": ">=14.17.0"
+  }
+}
+
